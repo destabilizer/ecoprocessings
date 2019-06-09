@@ -43,6 +43,21 @@ def build_quad():
     model_func = lambda x: np.polyval(coeff, x)
     return coeff
 
+def cut_length(x, y, length=-1):
+    m = min(len(x), len(y))
+    length = m if length == -1 else min(length, m)
+    return (x[:length], y[:length])
+
+def convert_shift(shift):
+    if shift >= 0:
+        return (0, shift)
+    else:
+        return (-shift, 0)
+
+def align_data(x, y, shift=0, length=-1):
+    cs = convert_shift(shift)
+    return cut_length(x[cs[0]:], y[cs[1]:], length)
+
 def draw_plot():
     xtest = np.arange(axis[0], axis[1], (axis[1]-axis[0])/100)
     ytest = model_func(xtest)
