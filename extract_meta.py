@@ -13,7 +13,8 @@ time_penalty = None
 def get_exif_from_image(image_filename):
     with open(image_filename, 'rb') as image_file:
         tags = exifread.process_file(image_file)
-    for k in tags.keys():
+    tags_keys = list(tags.keys()).copy()
+    for k in tags_keys:
         if type(tags[k]) == bytes:
             tags.pop(k)
         else:
@@ -26,11 +27,11 @@ def process_image_to_db(filename):
     db_collection.insert_one(t)
     print('processed', filename)
 
-def process_exifs_to_db(*directories, threads=8, tp=3):
+def process_exifs_to_db(*directories, mongodb_uri='mongodb://localhost:27017/', threads=8, tp=3):
     global db_collection, thread_amount, time_penalty
     thread_amount = threads
     time_penalty = tp
-    mc = pymongo.MongoClient()
+    mc = pymongo.MongoClient(mongodb_uri)
     db = mc.exif
     dt = datetime.now().strftime("ts%d.%m.%Y_%H.%M")
     db_collection = db[dt]
