@@ -31,20 +31,19 @@ def process_exifs_to_db(*directories, threads=8, tp=3):
     thread_amount = threads
     time_penalty = tp
     mc = pymongo.MongoClient()
-    db = mc['exif']
-    dt = datetime.now().strftime("%d.%m.%Y_%H.%M")
+    db = mc.exif
+    dt = datetime.now().strftime("ts%d.%m.%Y_%H.%M")
     db_collection = db[dt]
     for d in directories:
-        print('processing directory', d)
         process_directory(d)
 
 def process_directory(d):
     print('processing directory', d)
-    images = os.listdir(d)
+    images = list(filter(lambda s: s.lower().endswith('.jpg'), os.listdir(d)))
     thread_list = [('', None, 0)]*thread_amount
     while True:
         for ti in range(thread_amount):
-            if len(images) == 0: break
+            if len(images) == 0: return
             t = thread_list[ti]
             t_image, t_thread, t_time = t
             cur_time = time.time()
@@ -54,7 +53,7 @@ def process_directory(d):
                 print('killling thread for', t_image)
                 images.append(t_image)
             cur_image = os.path.join(d, images[0])
-            cur_thread = KThread(target = process_image_to_db, args=(cur_image))
+            cur_thread = KThread(target = process_image_to_db, args=(cur_image,))
             thread_list[ti] = (cur_image, cur_thread, cur_time)
             images.pop(0)
             cur_thread.start()
