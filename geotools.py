@@ -55,5 +55,8 @@ def get_norm_coord(deg_repr):
     d = int(d)
     m = int(m)/60
     s = s.split('/')
-    s = int(s[0])/(int(s[1])*3600)
+    if len(s) == 2:
+        s = int(s[0])/(int(s[1])*3600)
+    elif len(s) == 1:
+        s = int(s[0])/3600
     return d+m+s
