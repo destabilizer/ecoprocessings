@@ -9,6 +9,7 @@ import data_threading
 
 img_collection = None
 data_collections = []
+data_d = []
 timediff = None
 timediff_min = None
 timediff_max = None
@@ -21,6 +22,9 @@ def add_data(data_db_name, data_col_names, img_db_name, img_col_name):
     global img_collection, data_collections
     img_collection = mc[img_db_name][img_col_name]
     data_collections = [mc[data_db_name][cn] for cn in data_col_names]
+    for dc in data_collections:
+        for d in dc.find():
+            data_d.append(d)
 
 def load_sync_checkpoint():
     with open('#sync_ckpt#') as ckpt:
@@ -69,13 +73,12 @@ def sync_data(take_img_rand_func=lambda: random.randrange(100)<10, epsilon=0.003
             choosed_images_dt.append(dt)
     data_gps = []
     data_dt = []
-    for col in data_collections:
-        for d in col.find():
-            gps = d['latitude'], d['longitude']
-            print('data gps', gps)
-            dt = get_datetime_from_data_ts(d['gps_timest'])
-            data_gps.append(gps)
-            data_dt.append(dt)
+    for d in data_d:
+        gps = d['latitude'], d['longitude']
+        print('data gps', gps)
+        dt = get_datetime_from_data_ts(d['gps_timest'])
+        data_gps.append(gps)
+        data_dt.append(dt)
     images_amount = len(choosed_images_gps)
     data_amount = len(data_gps)
     dist_matrix = geotools.spherical_dist_matrix(choosed_images_gps, data_gps)
@@ -112,7 +115,7 @@ def find_best_data_fit_for_image(img_dt, time_epsilon=2):
     fit_counter = 0
     tdd = []
     for dc in data_collections:
-        for d in dc.find():
+        for d in data_d:
             dt = get_datetime_from_data_ts(d['gps_timest'])
             time_delta = (img_dt-dt).total_seconds()
             #if time_delta_diff < time_epsilon:
