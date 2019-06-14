@@ -1,8 +1,9 @@
-import exifread
-from kthread import KThread
+#import exifread
+#from kthread import KThread
+#import time
+import piexif
 import pymongo
 from datetime import datetime
-import time
 import os
 import os.path
 
@@ -38,6 +39,11 @@ def process_exifs_to_db(*directories, mongodb_uri='mongodb://localhost:27017/', 
     for d in directories:
         extract_directory(d)
 
+def choose_collection(dbname, colname):
+    mc = pymongo.MongoClient()
+    global db_collection
+    db_collection = mc[dbname][colname]
+
 def extract_directory(d):
     print('processing directory', d)
     images = list(filter(lambda s: s.lower().endswith('.jpg'), os.listdir(d)))
@@ -47,7 +53,7 @@ def extract_directory(d):
             if len(images) == 0: return
             t = thread_list[ti]
             t_image, t_thread, t_time = t
-            cur_time = time.time()
+            cur_ti2me = time.time()
             if t_image and t_thread.isAlive():
                 if (cur_time - t_time) < time_penalty: continue
                 t_thread.terminate()
@@ -59,4 +65,15 @@ def extract_directory(d):
             images.pop(0)
             cur_thread.start()
             
-def 
+def write_data_to_img(d):
+    fn = d['filename']
+    exif_bytes = piexif.dump(d)
+    piexif.insert(exif_bytes, fn)
+
+def insert_data():
+    tdm = data_threading.ThreadedDataManager()
+    tdm.setDataProcess(write_data_to_img)
+    tdm.setTimeout(5)
+    tdm.setOnSuccess(lambda d: print("inserted", d['filename']))
+    for d in db_collection.find(): tdm.append(d)
+    tdm.start()
