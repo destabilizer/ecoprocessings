@@ -5,6 +5,8 @@ import random
 import geotools
 import numpy as np
 
+import data_threading
+
 img_collection = None
 data_collections = []
 timediff = None
@@ -20,13 +22,20 @@ def add_data(data_db_name, data_col_names, img_db_name, img_col_name):
     img_collection = mc[img_db_name][img_col_name]
     data_collections = [mc[data_db_name][cn] for cn in data_col_names]
 
+def load_sync_checkpoint():
+    with open('#sync_ckpt#') as ckpt:
+        L = ckpt.readlines()
+    global timediff, timediff_min, timediff_max
+    timediff, timediff_min, timediff_max = map(float, L[:3])
+
 def _take_img():
     r = random.randrange(SYNC_DATA_PROB[0])
     return r < SYNC_DATA_PROB[1]
 
 def get_datetime_from_image_filename(fn):
     fn = fn.split('/')[-1].split('\\')[-1]
-    ts = '_'.join(fn.split('_')[1:3])
+    aftimg = fn.lower().split('img')[-1].strip('.jpg')
+    ts = '_'.join(aftimg.split('_')[1:3])
     dt = datetime.strptime(ts, '%Y%m%d_%H%M%S')
     return dt
 
@@ -98,35 +107,74 @@ def sync_data(take_img_rand_func=lambda: random.randrange(100)<10, epsilon=0.003
     global timediff, timediff_min, timediff_max
     a, m, timediff_min, timediff_max, timediff = cluster_info(clusters[c])
 
-def find_best_data_fit_for_image(img_dt, time_epsilon=3):
+def find_best_data_fit_for_image(img_dt, time_epsilon=2):
     fit = []
+    fit_counter = 0
+    tdd = []
     for dc in data_collections:
         for d in dc.find():
             dt = get_datetime_from_data_ts(d['gps_timest'])
             time_delta = (img_dt-dt).total_seconds()
             #if time_delta_diff < time_epsilon:
             #    good_fit.append((time_delta_diff, d))
-            time_delta_diff = abs(time_delta - timediff)
-            if time_delta_diff < time_epsilon:
+            time_delta_diff = time_delta - timediff
+            if abs(time_delta_diff) < time_epsilon:
                 print('fast remaping')
-                return d
+                return time_delta_diff, d, dc.name
             elif timediff_min < time_delta < timediff_max:
-                fit.append((time_delta_diff, d))
+                fit.append((d, dc.name))
+                tdd.append((time_delta_diff, fit_counter))
+                fit_counter += 1
             else:
                 pass
-    print('fit', len(fit))
-    if len(fit):
-        fit.sort()
-        print('timediff', fit[0][1])
-        return fit[0][1]
+    print('fit size', len(fit))
+    if fit:
+        _, i = min(map(lambda t: (abs(t[0]), t[1]), tdd))
+        print('best timediff', tdd[i])
+        return tdd[i], fit[i][0], fit[i][1]
     else:
         return -1
 
-def process_img_meta():
+def process_data_element(d):
+    print('started processing new img')
+    dt = get_datetime_from_image_filename(d['filename'])
+    bd = find_best_data_fit_for_image(dt)
+    d['data'] = bd
+
+def update_coordinates(d):
+    if d['data'] == -1: return
+    _id = d['_id']
+    new_coord = {'X':d['data'][1]['X'], 'Y':d['data'][1]['Y']}
+    print('new coordinates', new_coord)
+    upd = new_coord
+    upd['timediff'] = d['data'][0]
+    upd['db'] = d['data'][2]
+    img_collection.update({'_id': _id}, {'$set': upd})
+
+def process_img_meta(skip_remapped=True, threads=4, timeout=20):
+    tdm = data_threading.ThreadedDataManager(thread_amount=threads)
+    tdm.setDataProcess(process_data_element)
+    tdm.setTimeout(timeout)
+    tdm.setOnSuccess(update_coordinates)
     for img in img_collection.find():
-        dt = get_datetime_from_image_filename(img['filename'])
-        d = find_best_data_fit_for_image(dt)
-        if d == -1: continue
-        new_coord = {'X':d['X'], 'Y':d['Y']}
-        print('new coordinates', new_coord)
-        img_collection.update({'_id': img['_id']}, {'$set': new_coord})
+        if skip_remapped:
+            if 'X' in img.keys() and 'Y' in img.keys():
+                print('skip img')
+                continue
+        d = dict()
+        d['_id'], d['filename'] = img['_id'], img['filename']
+        tdm.append(d)
+
+    print('all data is loaded')
+    tdm.start()
+
+def process_img_meta_linear(skip_remapped=True):
+    for img in img_collection.find():
+        if skip_remapped:
+            if 'X' in img.keys() and 'Y' in img.keys():
+                print('skip img')
+                continue
+        d = dict()
+        d['_id'], d['filename'] = img['_id'], img['filename']
+        process_data_element(d)
+        update_coordinates(d)
