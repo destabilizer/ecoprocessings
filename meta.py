@@ -36,9 +36,9 @@ def process_exifs_to_db(*directories, mongodb_uri='mongodb://localhost:27017/', 
     dt = datetime.now().strftime("ts%d.%m.%Y_%H.%M")
     db_collection = db[dt]
     for d in directories:
-        process_directory(d)
+        extract_directory(d)
 
-def process_directory(d):
+def extract_directory(d):
     print('processing directory', d)
     images = list(filter(lambda s: s.lower().endswith('.jpg'), os.listdir(d)))
     thread_list = [('', None, 0)]*thread_amount
@@ -59,3 +59,4 @@ def process_directory(d):
             images.pop(0)
             cur_thread.start()
             
+def 
