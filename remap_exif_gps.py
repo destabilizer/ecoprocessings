@@ -7,6 +7,13 @@ import numpy as np
 
 import data_threading
 
+
+'''
+This module contains tools for synchronising gps coordinates lines with different timestamps
+and then correcting one to another.
+'''
+
+
 img_collection = None
 data_collections = []
 data_d = []

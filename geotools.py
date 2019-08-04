@@ -1,6 +1,14 @@
 import numpy as np
 from math import radians, cos, sin, asin, sqrt
 
+
+'''
+This module contatins some functions for geodata calculations,
+for example, matrix of distance for points given in long/lat
+coordinates (that is done by function spherical_dist)
+'''
+
+
 def haversine(lon1, lat1, lon2, lat2):
     """
     Calculate the great circle distance between two points 

@@ -3,6 +3,15 @@ import numpy as np
 from scipy import stats
 import matplotlib.pyplot as plt
 
+'''
+This module contains routines that needs for data analysis and building
+simple module. Using it you can add data from database (or just directly,
+specifing model.X and model.Y) and try linear or quadratic regression 
+(with functions build_linear and build_quad). After all, you can draw the
+plot using matplotlib, using the function draw_plot.
+'''
+
+
 graph_name = str()
 graph_axis_names = list()
 X, Y = list(), list()
@@ -11,7 +20,7 @@ model_name = str()
 axis = [0, 1, 0, 1]
 r2 = None
 
-def add_data(field_x, field_y, dbname, filter_func=lambda x, y: True):
+def add_data_from_db(field_x, field_y, dbname, filter_func=lambda x, y: True):
     "Add data from database"
     global graph_name, graph_params
     graph_name = dbname

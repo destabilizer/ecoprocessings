@@ -2,6 +2,10 @@ AMPERKA_GROVE_CORRELATION = [ 0.63738431, -1.42841419,  0.99381443]
 
 import numpy
 
+'''
+Contains routines for converting data from database to absolute SI values.
+'''
+
 def amperka_light(dataval):
     if not (0 < dataval < 1): return
     old_light_value = dataval * 102.4

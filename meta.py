@@ -11,6 +11,10 @@ db_collection = None
 thread_amount = None
 time_penalty = None
 
+'''
+Contains functions for extracting and writing exif metadata from images to mongo and from database to images
+'''
+
 def get_exif_from_image(image_filename):
     with open(image_filename, 'rb') as image_file:
         tags = exifread.process_file(image_file)
